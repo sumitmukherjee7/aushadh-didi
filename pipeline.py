@@ -89,13 +89,23 @@ def digitise_prescription(image_file_path: str, timeout_seconds: int = 40) -> Di
             if current_status in ("completed", "partially_completed"):
                 # Fetch results
                 results = client.doc_ai.get_results(job_id=job_id)
-                extracted_text = ""
-                if hasattr(results, "documents") and results.documents:
-                    for doc in results.documents:
-                        if hasattr(doc, "pages") and doc.pages:
-                            for page in doc.pages:
-                                if hasattr(page, "content") and page.content:
-                                    extracted_text += page.content + "\n\n"
+                extracted_lines = []
+                docs = getattr(results, "documents", None) or []
+                for doc in docs:
+                    pages = getattr(doc, "pages", None) or []
+                    for page in pages:
+                        blocks = getattr(page, "blocks", None) or []
+                        for block in blocks:
+                            if isinstance(block, dict):
+                                tag = block.get("layout_tag", "")
+                                b_text = block.get("text", "")
+                            else:
+                                tag = getattr(block, "layout_tag", "")
+                                b_text = getattr(block, "text", "")
+                            # Exclude verbose AI vision descriptions (layout_tag == 'image'), keep clinical text
+                            if tag != "image" and b_text and b_text.strip():
+                                extracted_lines.append(b_text.strip())
+                extracted_text = "\n".join(extracted_lines)
                 return {
                     "job_id": job_id,
                     "status": "completed",

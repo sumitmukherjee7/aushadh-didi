@@ -598,6 +598,9 @@ class AushadhDidiHandler(BaseHTTPRequestHandler):
                     elif b'name="image_file"' in part:
                         headers_and_body = part.split(b"\r\n\r\n", 1)
                         if len(headers_and_body) == 2:
+                            header_str = headers_and_body[0].decode("utf-8", errors="ignore")
+                            if 'filename="' in header_str:
+                                image_filename = header_str.split('filename="')[1].split('"')[0].strip()
                             data = headers_and_body[1].rsplit(b"\r\n", 1)[0]
                             if len(data) > 0:
                                 image_data = data
@@ -605,6 +608,9 @@ class AushadhDidiHandler(BaseHTTPRequestHandler):
                     elif b'name="audio_file"' in part:
                         headers_and_body = part.split(b"\r\n\r\n", 1)
                         if len(headers_and_body) == 2:
+                            header_str = headers_and_body[0].decode("utf-8", errors="ignore")
+                            if 'filename="' in header_str:
+                                audio_filename = header_str.split('filename="')[1].split('"')[0].strip()
                             data = headers_and_body[1].rsplit(b"\r\n", 1)[0]
                             if len(data) > 0:
                                 audio_data = data
@@ -617,13 +623,19 @@ class AushadhDidiHandler(BaseHTTPRequestHandler):
                 if use_sample_image or not image_data:
                     target_image = "samples/sample_prescription.png"
                 else:
-                    target_image = str(uploads_dir / f"user_prescription_{int(time.time())}.png")
+                    ext = Path(image_filename).suffix.lower() if image_filename else ".jpg"
+                    if ext not in (".jpg", ".jpeg", ".png", ".pdf"):
+                        ext = ".jpg"
+                    target_image = str(uploads_dir / f"user_prescription_{int(time.time())}{ext}")
                     Path(target_image).write_bytes(image_data)
 
                 if use_sample_audio or not audio_data:
                     target_audio = "samples/sample_patient_query.wav"
                 else:
-                    target_audio = str(uploads_dir / f"user_audio_{int(time.time())}.wav")
+                    ext = Path(audio_filename).suffix.lower() if audio_filename else ".wav"
+                    if ext not in (".wav", ".mp3", ".m4a", ".aac", ".ogg", ".webm"):
+                        ext = ".wav"
+                    target_audio = str(uploads_dir / f"user_audio_{int(time.time())}{ext}")
                     Path(target_audio).write_bytes(audio_data)
 
                 # Run Sarvam Pipeline
